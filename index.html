@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Innovation Week – Attendance by Time</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  body { font-family: Arial, sans-serif; background: #f9f9f9; margin: 0; padding: 32px; }
+  .wrap { max-width: 960px; margin: 0 auto; background: #fff; border-radius: 12px; padding: 32px; box-shadow: 0 2px 16px rgba(0,0,0,0.08); }
+  h2 { text-align: center; font-size: 18px; color: #222; margin: 0 0 4px; }
+  p.sub { text-align: center; font-size: 13px; color: #888; margin: 0 0 20px; }
+  .legend { display: flex; justify-content: center; gap: 32px; margin-bottom: 16px; font-size: 13px; }
+  .legend span { display: flex; align-items: center; gap: 8px; }
+  .dot { width: 14px; height: 14px; border-radius: 50%; display: inline-block; }
+  .zone-key { display: flex; justify-content: center; gap: 24px; margin-top: 16px; flex-wrap: wrap; font-size: 12px; color: #666; }
+  .zone-key span { display: flex; align-items: center; gap: 6px; }
+  .swatch { width: 28px; height: 12px; border-radius: 3px; display: inline-block; }
+
+  /* Custom tooltip */
+  #tooltip {
+    position: fixed;
+    background: rgba(20,20,20,0.92);
+    color: #fff;
+    border-radius: 10px;
+    padding: 12px 16px;
+    font-size: 13px;
+    pointer-events: none;
+    display: none;
+    z-index: 999;
+    max-width: 260px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    line-height: 1.6;
+  }
+  #tooltip .tt-time { font-size: 11px; color: #aaa; margin-bottom: 4px; }
+  #tooltip .tt-day { font-weight: bold; margin-bottom: 2px; }
+  #tooltip .tt-session { font-size: 12px; color: #ddd; margin-bottom: 4px; }
+  #tooltip .tt-att { font-size: 15px; font-weight: bold; color: #fff; }
+  #tooltip .tt-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h2>Innovation Week — Attendance by Session Time</h2>
+  <p class="sub">June 9 (Day 1) vs June 10 (Day 2) &nbsp;|&nbsp; Hover a dot to see session details</p>
+  <div class="legend">
+    <span><span class="dot" style="background:#4F81BD"></span> Day 1 (Jun 9)</span>
+    <span><span class="dot" style="background:#C0504D"></span> Day 2 (Jun 10)</span>
+  </div>
+  <canvas id="chart" height="420"></canvas>
+  <div class="zone-key">
+    <span><span class="swatch" style="background:rgba(255,180,50,0.25)"></span> 🔥 Morning Peak</span>
+    <span><span class="swatch" style="background:rgba(100,140,255,0.2)"></span> ❄️ Lunch Dip</span>
+    <span><span class="swatch" style="background:rgba(255,180,50,0.15)"></span> ↗ Afternoon Recovery</span>
+    <span><span class="swatch" style="background:rgba(100,140,255,0.25)"></span> ❄️ Late Afternoon Drop</span>
+  </div>
+</div>
+
+<div id="tooltip"></div>
+
+<script>
+const allTimes = ['9:30 AM','10:00 AM','10:30 AM','11:00 AM','11:30 AM','1:00 PM','1:30 PM','2:00 PM','2:30 PM','3:00 PM','3:30 PM','4:00 PM','4:30 PM'];
+
+const day1Sessions = {
+  '9:30 AM':  { name: 'The New Health Imperative',                        att: 258 },
+  '10:00 AM': { name: 'The Consumerization of Care',                      att: 278 },
+  '10:30 AM': { name: 'Building the Frontier Firm',                       att: 289 },
+  '11:00 AM': { name: 'HealthCentral: Health vs Hype',                    att: 284 },
+  '11:30 AM': { name: 'Roadmap for Brands in the Age of AI Answers',      att: 305 },
+  '1:00 PM':  { name: 'From Campaigns to Capability: The Agentic Health Era', att: 192 },
+  '1:30 PM':  { name: 'The Human Side of Conversational AI',              att: 215 },
+  '2:00 PM':  { name: 'Defining Innovation in Patient Engagement',        att: 223 },
+  '3:00 PM':  { name: "AstraZeneca's AIMI-GPT",                          att: 134 },
+  '3:30 PM':  { name: 'Promise. Power. Limits. The Real Story of AI in Care', att: 143 },
+  '4:00 PM':  { name: 'iHeart: Tuned In. AI, Trust, and the Future of Health', att: 137 },
+};
+
+const day2Sessions = {
+  '9:30 AM':  { name: 'Google: Video, Health, and the AI-Powered Patient Journey', att: 245 },
+  '10:00 AM': { name: 'From Platform to Performance: Supercharging Your Data with Omni', att: 257 },
+  '10:30 AM': { name: 'OpenEvidence: AI at the Point of Care',            att: 269 },
+  '11:00 AM': { name: "Small Data, Big Impact: FDA's Plausible Mechanism Framework", att: 260 },
+  '11:30 AM': { name: 'OpenAI: From Prompt to Patient Impact',            att: 241 },
+  '1:00 PM':  { name: 'Keynote: Leading in the Agentic Era Beyond the Hype', att: 160 },
+  '1:30 PM':  { name: 'The Future of Health Marketing Workflows',         att: 189 },
+  '2:00 PM':  { name: 'Building the Scaled Content Machine',              att: 203 },
+  '2:30 PM':  { name: 'Veeva Commercial Cloud: Technology Foundation for Agentic Commercial', att: 158 },
+  '3:00 PM':  { name: 'AI, Trust and the Younger Cancer Journey',         att: 170 },
+  '3:30 PM':  { name: 'Meta: The Health Consumer Is a Consumer First',    att: 160 },
+  '4:00 PM':  { name: 'Social Excellence in the Age of Creators and AI', att: 155 },
+  '4:30 PM':  { name: "TikTok's Second Act: What's Actually New for Healthcare in 2026", att: 145 },
+};
+
+const d1 = allTimes.map(t => day1Sessions[t]?.att ?? null);
+const d2 = allTimes.map(t => day2Sessions[t]?.att ?? null);
+
+const zonePlugin = {
+  id: 'zones',
+  beforeDraw(chart) {
+    const { ctx, chartArea, scales } = chart;
+    if (!chartArea) return;
+    const x = scales.x;
+    const { top, bottom } = chartArea;
+    const half = (x.getPixelForValue(1) - x.getPixelForValue(0)) / 2;
+    const zones = [
+      { s: 0, e: 4,  color: 'rgba(255,180,50,0.18)' },
+      { s: 4, e: 5,  color: 'rgba(100,140,255,0.15)' },
+      { s: 5, e: 7,  color: 'rgba(255,180,50,0.10)' },
+      { s: 8, e: 12, color: 'rgba(100,140,255,0.20)' },
+    ];
+    ctx.save();
+    zones.forEach(z => {
+      const x1 = x.getPixelForValue(z.s) - half;
+      const x2 = x.getPixelForValue(z.e) + half;
+      ctx.fillStyle = z.color;
+      ctx.fillRect(x1, top, x2 - x1, bottom - top);
+    });
+    ctx.restore();
+  },
+  afterDraw(chart) {
+    const { ctx, chartArea, scales } = chart;
+    if (!chartArea) return;
+    const x = scales.x;
+    const zones = [
+      { s: 0, e: 4,  label: '🔥 Morning Peak',     color: 'rgba(180,110,0,0.75)' },
+      { s: 4, e: 5,  label: '❄️ Lunch Dip',         color: 'rgba(60,90,200,0.65)' },
+      { s: 5, e: 7,  label: '↗ Recovery',            color: 'rgba(160,100,0,0.65)' },
+      { s: 8, e: 12, label: '❄️ Afternoon Drop',     color: 'rgba(60,90,200,0.75)' },
+    ];
+    ctx.save();
+    ctx.font = 'bold 11px Arial';
+    ctx.textAlign = 'center';
+    zones.forEach(z => {
+      const cx = (x.getPixelForValue(z.s) + x.getPixelForValue(z.e)) / 2;
+      ctx.fillStyle = z.color;
+      ctx.fillText(z.label, cx, chartArea.top + 16);
+    });
+    ctx.restore();
+  }
+};
+
+let hoveredPoint = null;
+
+const hoverPlugin = {
+  id: 'pointHighlight',
+  afterDraw(chart) {
+    if (!hoveredPoint) return;
+    const { ctx, data, scales } = chart;
+    const { datasetIndex, index } = hoveredPoint;
+    const ds = data.datasets[datasetIndex];
+    const val = ds.data[index];
+    if (val === null) return;
+
+    const x = scales.x.getPixelForValue(index);
+    const y = scales.y.getPixelForValue(val);
+    const color = datasetIndex === 0 ? '#4F81BD' : '#C0504D';
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(x, y, 14, 0, Math.PI * 2);
+    ctx.fillStyle = color.replace(')', ',0.2)').replace('rgb', 'rgba');
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(x, y, 9, 0, Math.PI * 2);
+    ctx.fillStyle = color;
+    ctx.fill();
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+    ctx.restore();
+  }
+};
+
+const tooltip = document.getElementById('tooltip');
+const chartCanvas = document.getElementById('chart');
+const chartCtx = chartCanvas.getContext('2d');
+
+const myChart = new Chart(chartCtx, {
+  type: 'line',
+  plugins: [zonePlugin, hoverPlugin],
+  data: {
+    labels: allTimes,
+    datasets: [
+      {
+        label: 'Day 1 (Jun 9)',
+        data: d1,
+        borderColor: '#4F81BD',
+        pointBackgroundColor: '#4F81BD',
+        pointBorderColor: '#fff',
+        pointBorderWidth: 2,
+        pointRadius: 6,
+        pointHoverRadius: 0,
+        borderWidth: 2.5,
+        tension: 0.3,
+        spanGaps: false,
+        fill: false,
+      },
+      {
+        label: 'Day 2 (Jun 10)',
+        data: d2,
+        borderColor: '#C0504D',
+        pointBackgroundColor: '#C0504D',
+        pointBorderColor: '#fff',
+        pointBorderWidth: 2,
+        pointRadius: 6,
+        pointHoverRadius: 0,
+        borderWidth: 2.5,
+        tension: 0.3,
+        spanGaps: false,
+        fill: false,
+      }
+    ]
+  },
+  options: {
+    responsive: true,
+    interaction: { mode: 'nearest', intersect: true },
+    plugins: {
+      legend: { display: false },
+      tooltip: { enabled: false }
+    },
+    scales: {
+      x: {
+        grid: { color: 'rgba(0,0,0,0.05)' },
+        ticks: { font: { size: 12 }, maxRotation: 30, color: '#444' }
+      },
+      y: {
+        min: 0,
+        max: 360,
+        grid: { color: 'rgba(0,0,0,0.06)' },
+        ticks: { font: { size: 12 }, color: '#444' },
+        title: { display: true, text: 'Attendees', font: { size: 13, weight: 'bold' }, color: '#555' }
+      }
+    },
+    onHover(event, elements) {
+      if (elements.length > 0) {
+        const el = elements[0];
+        hoveredPoint = { datasetIndex: el.datasetIndex, index: el.index };
+        myChart.draw();
+
+        const dsIdx = el.datasetIndex;
+        const idx = el.index;
+        const time = allTimes[idx];
+        const session = dsIdx === 0 ? day1Sessions[time] : day2Sessions[time];
+        const dayLabel = dsIdx === 0 ? 'Day 1 — Jun 9' : 'Day 2 — Jun 10';
+        const color = dsIdx === 0 ? '#4F81BD' : '#C0504D';
+
+        if (session) {
+          tooltip.style.display = 'block';
+          tooltip.innerHTML = `
+            <div class="tt-time">⏰ ${time}</div>
+            <div class="tt-day"><span class="tt-dot" style="background:${color}"></span>${dayLabel}</div>
+            <div class="tt-session">${session.name}</div>
+            <div class="tt-att">${session.att} attendees</div>
+          `;
+          let tx = event.native.clientX + 16;
+          let ty = event.native.clientY - 20;
+          if (tx + 280 > window.innerWidth) tx = event.native.clientX - 280;
+          tooltip.style.left = tx + 'px';
+          tooltip.style.top = ty + 'px';
+        }
+        chartCanvas.style.cursor = 'pointer';
+      } else {
+        hoveredPoint = null;
+        tooltip.style.display = 'none';
+        chartCanvas.style.cursor = 'default';
+        myChart.draw();
+      }
+    }
+  }
+});
+
+chartCanvas.addEventListener('mouseleave', () => {
+  hoveredPoint = null;
+  tooltip.style.display = 'none';
+  myChart.draw();
+});
+</script>
+</body>
+</html>
